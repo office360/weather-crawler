@@ -267,9 +267,30 @@ class WeatherCrawler
                     throw new \Exception('解析当前天气基础数据失败');
                 }
                 
+                // 调试：查看API返回的完整数据
+                // error_log("Current weather API response: " . json_encode($data));
+                
+                // 确保访客数据已加载
+                if (empty($this->visitorData)) {
+                    $this->getVisitorData();
+                }
+                
+                // 优先使用访客数据中的城市信息，只保留城市名称
+                $cityName = '';
+                if (!empty($this->visitorData['city'])) {
+                    // 只使用城市名称，不包含省份和区域信息
+                    $cityName = $this->visitorData['city'];
+                } else if (!empty($data['city'])) {
+                    // 如果访客数据中没有城市信息，再使用API返回的city字段
+                    $cityName = $data['city'];
+                } else {
+                    // 作为最后手段，从城市代码映射中反向查找城市名称
+                    $cityName = array_search($cityCode, $this->cityCodeMap) ?: $cityCode;
+                }
+                
                 return [
                     'cityCode' => $cityCode,
-                    'cityName' => $data['city'] ?? '',
+                    'cityName' => $cityName,
                     'temperature' => $data['temp'] ?? '',
                     'weather' => $data['weather'] ?? '',
                     'windDirection' => $data['WD'] ?? '',
@@ -397,6 +418,16 @@ class WeatherCrawler
                     throw new \Exception('未找到逐小时天气数据');
                 }
                 
+                // 调试：查看原始数据
+                // error_log("原始逐小时天气数据: " . json_encode($data, JSON_UNESCAPED_UNICODE));
+                
+                // 调试：查看当前时间和时间格式
+                // error_log("当前时间: " . $currentTime->format('YmdHis'));
+                // if (!empty($data)) {
+                //     $firstItem = reset($data);
+                //     error_log("第一条数据时间: " . ($firstItem['jf'] ?? '无时间信息'));
+                // }
+                
                 // 天气状况代码映射
                 $weatherCodes = [
                     '00' => '晴', '01' => '多云', '02' => '阴', '03' => '小雨',
@@ -411,21 +442,37 @@ class WeatherCrawler
                 
                 // 处理数据
                 $result = [];
+                $currentTime = new \DateTime();
+                
                 foreach ($data as $item) {
-                    // 格式化时间，从202601072000转换为20:00
-                    $time = $item['jf'] ?? '';
-                    if (strlen($time) >= 4) {
-                        $time = substr($time, -4, 2) . ':' . substr($time, -2, 2);
+                    // 保留完整的时间字符串用于比较（格式：202601072000）
+                    $fullTime = $item['jf'] ?? '';
+                    
+                    // 格式化显示时间，从202601072000转换为20:00
+                    $displayTime = '';
+                    if (strlen($fullTime) >= 4) {
+                        $displayTime = substr($fullTime, -4, 2) . ':' . substr($fullTime, -2, 2);
                     }
                     
-                    $result[] = [
-                        'time' => $time,
-                        'temperature' => $item['jd'] ?? '',
-                        'weather' => $weatherCodes[$item['ja']] ?? '未知',
-                        'windDirection' => $item['jh'] ?? '',
-                        'windPower' => $item['ji'] ?? '',
-                        'humidity' => $item['je'] ?? ''
-                    ];
+                    // 如果有完整的时间信息，过滤掉当前时间之前的数据
+                    if (strlen($fullTime) == 12) {
+                        // 解析为DateTime对象，使用正确的格式（没有秒数）
+                        $forecastTime = \DateTime::createFromFormat('YmdHi', $fullTime);
+                        if ($forecastTime !== false) {
+                            // 只保留当前时间之后的天气数据
+                            if ($forecastTime > $currentTime) {
+                                $result[] = [
+                                    'time' => $displayTime,
+                                    'temperature' => $item['jd'] ?? '',
+                                    'weather' => $weatherCodes[$item['ja']] ?? '未知',
+                                    'windDirection' => $item['jh'] ?? '',
+                                    'windPower' => $item['ji'] ?? '',
+                                    'humidity' => $item['je'] ?? ''
+                                ];
+                            }
+                        }
+                    }
+                    // 不保留时间信息不完整的数据，直接跳过
                 }
                 
                 return $result;
