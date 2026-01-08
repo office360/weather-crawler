@@ -1,0 +1,32 @@
+# Vendor directory
+/vendor/
+
+# Composer files
+composer.phar
+
+# Log files
+/logs/
+*.log
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+/.phpunit.result.cache
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Cache files
+/cache/
+/tmp/
