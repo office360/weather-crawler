@@ -4,26 +4,34 @@
 
 ## 功能特性
 
-- 根据访客所在城市自动获取天气数据
-- 支持按城市代码或城市名称查询天气
-- 提供四种API接口：
+- **基于ip2region的访客IP定位**：完全本地化的IP地址定位，无需依赖外部API
+- **自动获取天气数据**：根据访客所在城市自动获取天气数据
+- **灵活的城市查询方式**：支持按城市代码或城市名称查询天气
+- **提供四种API接口**：
   - 当前天气数据
   - 7日天气预报
   - 逐小时天气预报
   - 综合天气数据（包含上述所有数据）
-- 支持PS-4自动加载
-- 模拟移动设备请求，避免网站反爬限制
-- 完善的错误处理机制
+- **支持PS-4自动加载**：符合现代PHP开发标准
+- **模拟移动设备请求**：避免网站反爬限制
+- **完善的错误处理机制**：确保应用稳定运行
+- **可更新的IP数据库**：支持定期更新ip2region数据库以提高定位准确性
 
 ## 安装
 
-### 方法一：直接从GitHub仓库安装（推荐）
+### 方法一：使用Composer安装（推荐）
+
+```bash
+composer require office360/weather-crawler
+```
+
+### 方法二：从GitHub仓库安装开发版本
 
 ```bash
 composer require office360/weather-crawler:dev-main
 ```
 
-如果上述命令失败，可以在`composer.json`中手动添加仓库配置：
+如果遇到网络问题，可以在`composer.json`中手动添加仓库配置：
 
 ```json
 {
@@ -45,13 +53,30 @@ composer require office360/weather-crawler:dev-main
 composer install
 ```
 
-### 方法二：从Packagist安装
+## 快速开始
 
-```bash
-composer require office360/weather-crawler
+创建一个简单的PHP文件来测试天气爬虫：
+
+```php
+<?php
+
+require 'vendor/autoload.php';
+
+use Weather\WeatherCrawler;
+
+// 创建实例
+$weatherCrawler = new WeatherCrawler();
+
+// 通过城市名称获取当前天气数据（推荐使用城市名称）
+try {
+    $currentWeather = $weatherCrawler->getCurrentWeather(null, '北京');
+    print_r($currentWeather);
+} catch (Exception $e) {
+    echo '错误: ' . $e->getMessage();
+}
 ```
 
-> 注意：确保您的Composer配置支持稳定版本包。
+运行上面的代码，您将看到北京的当前天气数据。
 
 ## 使用方法
 
@@ -118,6 +143,28 @@ try {
 }
 ```
 
+### 手动指定IP地址获取天气数据
+
+```php
+<?php
+
+require 'vendor/autoload.php';
+
+use Weather\WeatherCrawler;
+
+// 创建实例
+$weatherCrawler = new WeatherCrawler();
+
+// 手动指定IP地址获取天气数据（适用于代理环境或需要模拟不同地区的情况）
+try {
+    // 模拟北京IP获取当前天气
+    $currentWeather = $weatherCrawler->getCurrentWeather(null, null, '114.247.50.2');
+    print_r($currentWeather);
+} catch (Exception $e) {
+    echo '错误: ' . $e->getMessage();
+}
+```
+
 ### 获取综合天气数据
 
 ```php
@@ -143,9 +190,12 @@ try {
 
 ### WeatherCrawler类
 
-#### getVisitorData()
+#### getVisitorData(string $clientIp = null)
 
 获取访客的IP、所在城市、区域等信息。
+
+参数：
+- `$clientIp`：访客IP地址（可选，不提供则自动获取）
 
 返回值：
 ```php
@@ -158,13 +208,14 @@ try {
 ]
 ```
 
-#### getCurrentWeather(string $cityCode = null, string $cityName = null)
+#### getCurrentWeather(string $cityCode = null, string $cityName = null, string $clientIp = null)
 
 获取当前天气数据。
 
 参数：
 - `$cityCode`：城市代码（可选）
 - `$cityName`：城市名称（可选）
+- `$clientIp`：访客IP地址（可选，不提供则自动获取）
 
 返回值：
 ```php
@@ -200,13 +251,14 @@ try {
 ]
 ```
 
-#### get7DayWeatherData(string $cityCode = null, string $cityName = null)
+#### get7DayWeatherData(string $cityCode = null, string $cityName = null, string $clientIp = null)
 
 获取7日天气预报。
 
 参数：
 - `$cityCode`：城市代码（可选）
 - `$cityName`：城市名称（可选）
+- `$clientIp`：访客IP地址（可选，不提供则自动获取）
 
 返回值：
 ```php
@@ -228,13 +280,14 @@ try {
 ]
 ```
 
-#### getHourlyWeatherData(string $cityCode = null, string $cityName = null)
+#### getHourlyWeatherData(string $cityCode = null, string $cityName = null, string $clientIp = null)
 
 获取逐小时天气预报。
 
 参数：
 - `$cityCode`：城市代码（可选）
 - `$cityName`：城市名称（可选）
+- `$clientIp`：访客IP地址（可选，不提供则自动获取）
 
 返回值：
 ```php
@@ -251,20 +304,21 @@ try {
 ]
 ```
 
-#### getAllWeatherData(string $cityCode = null, string $cityName = null)
+#### getAllWeatherData(string $cityCode = null, string $cityName = null, string $clientIp = null)
 
-获取综合天气数据，包含当前天气、7日预报和逐小时预报。
+获取综合天气数据，包含当前天气、15日预报和逐小时预报。
 
 参数：
 - `$cityCode`：城市代码（可选）
 - `$cityName`：城市名称（可选）
+- `$clientIp`：访客IP地址（可选，不提供则自动获取）
 
 返回值：
 ```php
 [
     'currentWeather' => array, // 当前天气数据，同getCurrentWeather返回值
     'fifteenDayWeather' => array, // 15天天气预报数据，同get7DayWeatherData返回值格式
-    'hourlyWeather' => array // 逐小时天气预报数据，同getHourlyWeatherData返回值格式
+    'hourlyWeather' => array // 逐小时天气预报数据，同getHourlyWeatherData返回值格式（实际返回约109小时数据）
 ]
 ```
 
