@@ -50,18 +50,23 @@ class WeatherCrawler
     /**
      * 获取访客数据
      * 数据源：https://wgeo.weather.com.cn/ip/?_=1767694402775
+     * @param string|null $clientIp 可选的客户端IP地址，用于获取真实访客位置
      * @return array
      * @throws \Exception
      */
-    public function getVisitorData(): array
+    public function getVisitorData(string $clientIp = null): array
     {
-        // 如果已经获取过访客数据，直接返回
-        if (!empty($this->visitorData)) {
+        // 如果已经获取过访客数据且没有提供新的IP，直接返回
+        if (!empty($this->visitorData) && $clientIp === null) {
             return $this->visitorData;
         }
 
         try {
             $url = 'https://wgeo.weather.com.cn/ip/?_=' . (time() * 1000);
+            // 如果提供了客户端IP，添加到请求头中
+            if (!empty($clientIp)) {
+                $url .= '&ip=' . urlencode($clientIp);
+            }
             $headers = [
                 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 'Accept-Language: zh-CN,zh;q=0.9',
@@ -101,14 +106,15 @@ class WeatherCrawler
      * 获取当前天气数据接口
      * @param string|null $cityCode 城市代码
      * @param string|null $cityName 城市名称
+     * @param string|null $clientIp 可选的客户端IP地址，用于获取真实访客位置
      * @return array
      * @throws \Exception
      */
-    public function getCurrentWeather(string $cityCode = null, string $cityName = null): array
+    public function getCurrentWeather(string $cityCode = null, string $cityName = null, string $clientIp = null): array
     {
         try {
             // 确定城市代码
-            $cityCode = $this->getCityCode($cityCode, $cityName);
+            $cityCode = $this->getCityCode($cityCode, $cityName, $clientIp);
             
             // 获取当前天气基础数据（第二步）
             $basicData = $this->getBasicWeatherData($cityCode);
@@ -127,14 +133,15 @@ class WeatherCrawler
      * 获取7日天气数据接口
      * @param string|null $cityCode 城市代码
      * @param string|null $cityName 城市名称
+     * @param string|null $clientIp 可选的客户端IP地址，用于获取真实访客位置
      * @return array
      * @throws \Exception
      */
-    public function get7DayWeatherData(string $cityCode = null, string $cityName = null): array
+    public function get7DayWeatherData(string $cityCode = null, string $cityName = null, string $clientIp = null): array
     {
         try {
             // 确定城市代码
-            $cityCode = $this->getCityCode($cityCode, $cityName);
+            $cityCode = $this->getCityCode($cityCode, $cityName, $clientIp);
             
             // 获取17日天气数据（第三步）
             $allDayData = $this->getMultiDayWeatherData($cityCode);
@@ -150,14 +157,15 @@ class WeatherCrawler
      * 获取逐小时天气数据接口
      * @param string|null $cityCode 城市代码
      * @param string|null $cityName 城市名称
+     * @param string|null $clientIp 可选的客户端IP地址，用于获取真实访客位置
      * @return array
      * @throws \Exception
      */
-    public function getHourlyWeatherData(string $cityCode = null, string $cityName = null): array
+    public function getHourlyWeatherData(string $cityCode = null, string $cityName = null, string $clientIp = null): array
     {
         try {
             // 确定城市代码
-            $cityCode = $this->getCityCode($cityCode, $cityName);
+            $cityCode = $this->getCityCode($cityCode, $cityName, $clientIp);
             
             // 获取逐小时天气数据（第四步）
             return $this->getHourlyData($cityCode);
@@ -171,17 +179,18 @@ class WeatherCrawler
      * 含当前天气数据详情，15日天气数据及逐小时天气数据
      * @param string|null $cityCode 城市代码
      * @param string|null $cityName 城市名称
+     * @param string|null $clientIp 可选的客户端IP地址，用于获取真实访客位置
      * @return array
      * @throws \Exception
      */
-    public function getAllWeatherData(string $cityCode = null, string $cityName = null): array
+    public function getAllWeatherData(string $cityCode = null, string $cityName = null, string $clientIp = null): array
     {
         try {
             // 确定城市代码
-            $cityCode = $this->getCityCode($cityCode, $cityName);
+            $cityCode = $this->getCityCode($cityCode, $cityName, $clientIp);
             
             // 获取当前天气数据
-            $currentWeather = $this->getCurrentWeather($cityCode);
+            $currentWeather = $this->getCurrentWeather($cityCode, null, $clientIp);
             
             // 获取17日天气数据（取前15天）
             $allDayData = $this->getMultiDayWeatherData($cityCode);
@@ -214,10 +223,11 @@ class WeatherCrawler
      * 获取城市代码
      * @param string|null $cityCode 城市代码
      * @param string|null $cityName 城市名称
+     * @param string|null $clientIp 可选的客户端IP地址，用于获取真实访客位置
      * @return string
      * @throws \Exception
      */
-    protected function getCityCode(string $cityCode = null, string $cityName = null): string
+    protected function getCityCode(string $cityCode = null, string $cityName = null, string $clientIp = null): string
     {
         // 如果提供了城市代码，直接返回
         if (!empty($cityCode)) {
@@ -234,7 +244,7 @@ class WeatherCrawler
         }
         
         // 否则使用访客所在城市的代码
-        $visitorData = $this->getVisitorData();
+        $visitorData = $this->getVisitorData($clientIp);
         return $visitorData['cityCode'];
     }
 
