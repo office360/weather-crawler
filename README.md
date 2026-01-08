@@ -17,11 +17,41 @@
 
 ## 安装
 
-使用Composer安装：
+### 方法一：直接从GitHub仓库安装（推荐）
+
+```bash
+composer require office360/weather-crawler:dev-main
+```
+
+如果上述命令失败，可以在`composer.json`中手动添加仓库配置：
+
+```json
+{
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/office360/weather-crawler.git"
+        }
+    ],
+    "require": {
+        "office360/weather-crawler": "dev-main"
+    }
+}
+```
+
+然后运行：
+
+```bash
+composer install
+```
+
+### 方法二：从Packagist安装（即将支持）
 
 ```bash
 composer require office360/weather-crawler
 ```
+
+> 注意：目前该包尚未发布到Packagist，建议使用方法一安装。
 
 ## 使用方法
 
