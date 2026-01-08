@@ -1,4 +1,4 @@
-# mimibox/weather-crawler
+# office360/weather-crawler
 
 一个PHP天气爬虫工具，用于从中国天气网（https://www.weather.com.cn/）获取天气数据。
 
@@ -20,7 +20,7 @@
 使用Composer安装：
 
 ```bash
-composer require mimibox/weather-crawler
+composer require office360/weather-crawler
 ```
 
 ## 使用方法

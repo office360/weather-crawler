@@ -7,7 +7,7 @@ use Weather\WeatherCrawler;
 // 创建实例
 $weatherCrawler = new WeatherCrawler();
 
-echo "=== mimibox/weather-crawler 示例 ===\n\n";
+echo "=== office360/weather-crawler 示例 ===\n\n";
 
 try {
     echo "1. 获取访客数据：\n";

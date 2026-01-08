@@ -1,12 +1,12 @@
 {
-    "name": "mimibox/weather-crawler",
+    "name": "office360/weather-crawler",
     "description": "A PHP crawler for fetching weather data from China Weather Network",
     "type": "library",
     "license": "MIT",
     "authors": [
         {
-            "name": "miminox",
-            "email": "miminox@example.com"
+            "name": "office360",
+            "email": "office360@example.com"
         }
     ],
     "minimum-stability": "stable",
