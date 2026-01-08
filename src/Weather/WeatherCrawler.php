@@ -56,50 +56,52 @@ class WeatherCrawler
      */
     public function getVisitorData(string $clientIp = null): array
     {
-        // 如果已经获取过访客数据且没有提供新的IP，直接返回
-        if (!empty($this->visitorData) && $clientIp === null) {
-            return $this->visitorData;
-        }
-
-        try {
-            $url = 'https://wgeo.weather.com.cn/ip/?_=' . (time() * 1000);
-            // 如果提供了客户端IP，添加到请求头中
-            if (!empty($clientIp)) {
-                $url .= '&ip=' . urlencode($clientIp);
-            }
-            $headers = [
-                'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language: zh-CN,zh;q=0.9',
-                'Connection: keep-alive',
-                'User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
-                'Referer: https://www.weather.com.cn/',
-                'Host: wgeo.weather.com.cn'
-            ];
-
-            $response = $this->sendRequest($url, $headers);
-
-            // 解析数据
-            if (preg_match('/var ip="(\d+\.\d+\.\d+\.\d+)";var id="([^"]+)";var addr="([^"]+)";/', $response, $matches)) {
-                // 解析地址信息（格式：省份,城市,区域）
-                $addrParts = explode(',', $matches[3]);
-                $province = $addrParts[0] ?? '';
-                $city = $addrParts[1] ?? '';
-                $district = $addrParts[2] ?? '';
+        // 如果提供了新的客户端IP，或者还没有获取过访客数据，就重新获取
+        if (!empty($clientIp) || empty($this->visitorData)) {
+            try {
+                $url = 'https://wgeo.weather.com.cn/ip/?_=' . (time() * 1000);
+                // 如果提供了客户端IP，添加到请求参数中
+                if (!empty($clientIp)) {
+                    $url .= '&ip=' . urlencode($clientIp);
+                }
                 
-                $this->visitorData = [
-                    'ip' => $matches[1],
-                    'province' => $province,
-                    'city' => $city,
-                    'district' => $district,
-                    'cityCode' => $matches[2]
+                
+                $headers = [
+                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language: zh-CN,zh;q=0.9',
+                    'Connection: keep-alive',
+                    'User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+                    'Referer: https://www.weather.com.cn/',
+                    'Host: wgeo.weather.com.cn'
                 ];
-                return $this->visitorData;
-            } else {
-                throw new \Exception('无法解析访客数据');
+
+                $response = $this->sendRequest($url, $headers);
+
+                // 解析数据
+                if (preg_match('/var ip="(\d+\.\d+\.\d+\.\d+)";var id="([^"]+)";var addr="([^"]+)";/', $response, $matches)) {
+                    // 解析地址信息（格式：省份,城市,区域）
+                    $addrParts = explode(',', $matches[3]);
+                    $province = $addrParts[0] ?? '';
+                    $city = $addrParts[1] ?? '';
+                    $district = $addrParts[2] ?? '';
+                    
+                    $this->visitorData = [
+                        'ip' => $matches[1],
+                        'province' => $province,
+                        'city' => $city,
+                        'district' => $district,
+                        'cityCode' => $matches[2]
+                    ];
+                    return $this->visitorData;
+                } else {
+                    throw new \Exception('无法解析访客数据');
+                }
+            } catch (\Exception $e) {
+                throw new \Exception('获取访客数据失败: ' . $e->getMessage());
             }
-        } catch (\Exception $e) {
-            throw new \Exception('获取访客数据失败: ' . $e->getMessage());
         }
+        
+        return $this->visitorData;
     }
 
     /**
@@ -279,23 +281,23 @@ class WeatherCrawler
                 
                 // 调试：查看API返回的完整数据
                 // error_log("Current weather API response: " . json_encode($data));
+                // error_log("City code: " . $cityCode);
+                // error_log("API city field: " . ($data['city'] ?? 'empty'));
                 
-                // 确保访客数据已加载
-                if (empty($this->visitorData)) {
-                    $this->getVisitorData();
-                }
-                
-                // 优先使用访客数据中的城市信息，只保留城市名称
+                // 优先使用API返回的cityname字段
                 $cityName = '';
-                if (!empty($this->visitorData['city'])) {
-                    // 只使用城市名称，不包含省份和区域信息
-                    $cityName = $this->visitorData['city'];
-                } else if (!empty($data['city'])) {
-                    // 如果访客数据中没有城市信息，再使用API返回的city字段
-                    $cityName = $data['city'];
+                if (!empty($data['cityname'])) {
+                    // API返回的cityname已经是简洁的城市名称，直接使用
+                    $cityName = $data['cityname'];
                 } else {
-                    // 作为最后手段，从城市代码映射中反向查找城市名称
-                    $cityName = array_search($cityCode, $this->cityCodeMap) ?: $cityCode;
+                    // 如果是自动定位场景，直接使用访客数据中的城市名称
+                    if (!empty($this->visitorData['cityCode']) && $this->visitorData['cityCode'] === $cityCode) {
+                        $cityName = $this->visitorData['city'];
+                    } else {
+                        // 从城市代码映射中查找城市名称（需要反转映射）
+                        $reverseCityMap = array_flip($this->cityCodeMap);
+                        $cityName = $reverseCityMap[$cityCode] ?? $cityCode;
+                    }
                 }
                 
                 return [
