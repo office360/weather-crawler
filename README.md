@@ -45,13 +45,13 @@ composer require office360/weather-crawler:dev-main
 composer install
 ```
 
-### 方法二：从Packagist安装（即将支持）
+### 方法二：从Packagist安装
 
 ```bash
 composer require office360/weather-crawler
 ```
 
-> 注意：目前该包尚未发布到Packagist，建议使用方法一安装。
+> 注意：确保您的Composer配置支持稳定版本包。
 
 ## 使用方法
 
