@@ -402,14 +402,18 @@ class WeatherCrawler
     /**
      * 获取逐小时天气数据接口
      * @param string $cityCode 城市代码
+     * @param int $limit 返回条目数量，默认24条
      * @return array
      * @throws WeatherException
      */
-    public function getHourlyWeather(string $cityCode): array
+    public function getHourlyWeather(string $cityCode, int $limit = 24): array
     {
         try {
             // 获取逐小时天气数据（第四步）
-            return $this->getHourlyData($cityCode);
+            $hourlyData = $this->getHourlyData($cityCode);
+            
+            // 根据限制数量返回数据
+            return array_slice($hourlyData, 0, $limit);
         } catch (\Exception $e) {
             if ($e instanceof WeatherException) {
                 throw $e;
