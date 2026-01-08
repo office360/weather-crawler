@@ -69,7 +69,7 @@ $weatherCrawler = new WeatherCrawler();
 
 // 通过城市名称获取当前天气数据（推荐使用城市名称）
 try {
-    $currentWeather = $weatherCrawler->getCurrentWeather(null, '北京');
+    $currentWeather = $weatherCrawler->getCurrentWeather('北京', null);
     print_r($currentWeather);
 } catch (Exception $e) {
     echo '错误: ' . $e->getMessage();
@@ -115,7 +115,7 @@ $weatherCrawler = new WeatherCrawler();
 
 // 使用城市代码获取7日天气数据
 try {
-    $sevenDayWeather = $weatherCrawler->get7DayWeatherData('101010100'); // 北京
+    $sevenDayWeather = $weatherCrawler->get7DayWeather(null, '101010100'); // 北京
     print_r($sevenDayWeather);
 } catch (Exception $e) {
     echo '错误: ' . $e->getMessage();
@@ -136,7 +136,7 @@ $weatherCrawler = new WeatherCrawler();
 
 // 使用城市名称获取逐小时天气数据
 try {
-    $hourlyWeather = $weatherCrawler->getHourlyWeatherData(null, '上海');
+    $hourlyWeather = $weatherCrawler->getHourlyWeather('上海', null);
     print_r($hourlyWeather);
 } catch (Exception $e) {
     echo '错误: ' . $e->getMessage();
@@ -179,7 +179,7 @@ $weatherCrawler = new WeatherCrawler();
 
 // 获取综合天气数据
 try {
-    $allWeather = $weatherCrawler->getAllWeatherData();
+    $allWeather = $weatherCrawler->getAllWeather();
     print_r($allWeather);
 } catch (Exception $e) {
     echo '错误: ' . $e->getMessage();
@@ -208,13 +208,13 @@ try {
 ]
 ```
 
-#### getCurrentWeather(string $cityCode = null, string $cityName = null, string $clientIp = null)
+#### getCurrentWeather(string $cityName = null, string $cityCode = null, string $clientIp = null)
 
 获取当前天气数据。
 
 参数：
-- `$cityCode`：城市代码（可选）
 - `$cityName`：城市名称（可选）
+- `$cityCode`：城市代码（可选）
 - `$clientIp`：访客IP地址（可选，不提供则自动获取）
 
 返回值：
@@ -251,13 +251,13 @@ try {
 ]
 ```
 
-#### get7DayWeatherData(string $cityCode = null, string $cityName = null, string $clientIp = null)
+#### get7DayWeather(string $cityName = null, string $cityCode = null, string $clientIp = null)
 
 获取7日天气预报。
 
 参数：
-- `$cityCode`：城市代码（可选）
 - `$cityName`：城市名称（可选）
+- `$cityCode`：城市代码（可选）
 - `$clientIp`：访客IP地址（可选，不提供则自动获取）
 
 返回值：
@@ -280,13 +280,13 @@ try {
 ]
 ```
 
-#### getHourlyWeatherData(string $cityCode = null, string $cityName = null, string $clientIp = null)
+#### getHourlyWeather(string $cityName = null, string $cityCode = null, string $clientIp = null)
 
 获取逐小时天气预报。
 
 参数：
-- `$cityCode`：城市代码（可选）
 - `$cityName`：城市名称（可选）
+- `$cityCode`：城市代码（可选）
 - `$clientIp`：访客IP地址（可选，不提供则自动获取）
 
 返回值：
@@ -304,21 +304,21 @@ try {
 ]
 ```
 
-#### getAllWeatherData(string $cityCode = null, string $cityName = null, string $clientIp = null)
+#### getAllWeather(string $cityName = null, string $cityCode = null, string $clientIp = null)
 
 获取综合天气数据，包含当前天气、15日预报和逐小时预报。
 
 参数：
-- `$cityCode`：城市代码（可选）
 - `$cityName`：城市名称（可选）
+- `$cityCode`：城市代码（可选）
 - `$clientIp`：访客IP地址（可选，不提供则自动获取）
 
 返回值：
 ```php
 [
     'currentWeather' => array, // 当前天气数据，同getCurrentWeather返回值
-    'fifteenDayWeather' => array, // 15天天气预报数据，同get7DayWeatherData返回值格式
-    'hourlyWeather' => array // 逐小时天气预报数据，同getHourlyWeatherData返回值格式（实际返回约109小时数据）
+    'fifteenDayWeather' => array, // 15天天气预报数据，同get7DayWeather返回值格式
+    'hourlyWeather' => array // 逐小时天气预报数据，同getHourlyWeather返回值格式（实际返回约109小时数据）
 ]
 ```
 

@@ -10,6 +10,32 @@ use Ip2Region\Ip2Region;
 class WeatherCrawler
 {
     /**
+     * 天气状况代码映射
+     */
+    const WEATHER_CODES = [
+        '00' => '晴', '01' => '多云', '02' => '阴', '03' => '小雨',
+        '04' => '中雨', '05' => '大雨', '06' => '暴雨', '07' => '雷阵雨',
+        '08' => '阵雨', '09' => '小雪', '10' => '中雪', '11' => '大雪',
+        '12' => '暴雪', '13' => '雾', '14' => '霾', '15' => '沙尘',
+        '16' => '扬沙', '17' => '浮尘', '18' => '强沙尘暴', '19' => '雷阵雨伴有冰雹',
+        '20' => '小雨-中雨', '21' => '中雨-大雨', '22' => '大雨-暴雨', '23' => '暴雨-大暴雨',
+        '24' => '大暴雨-特大暴雨', '25' => '小雪-中雪', '26' => '中雪-大雪', '27' => '大雪-暴雪',
+        '301' => '多云', '302' => '阴'
+    ];
+    
+    /**
+     * 风力等级映射
+     */
+    const WIND_POWER_CODES = [
+        '1' => '1级', '2' => '2级', '3' => '3级', '4' => '4级',
+        '5' => '5级', '6' => '6级', '7' => '7级', '8' => '8级',
+        '9' => '9级', '10' => '10级', '11' => '11级', '12' => '12级及以上',
+        '0' => '微风', '00' => '微风', '01' => '1级', '02' => '2级',
+        '03' => '3级', '04' => '4级', '05' => '5级', '06' => '6级',
+        '07' => '7级', '08' => '8级', '09' => '9级', '10' => '10级'
+    ];
+    
+    /**
      * 访客数据
      * @var array
      */
@@ -175,13 +201,13 @@ class WeatherCrawler
 
     /**
      * 获取当前天气数据接口
-     * @param string|null $cityCode 城市代码
      * @param string|null $cityName 城市名称
+     * @param string|null $cityCode 城市代码
      * @param string|null $clientIp 可选的客户端IP地址，用于获取真实访客位置
      * @return array
      * @throws \Exception
      */
-    public function getCurrentWeather(string $cityCode = null, string $cityName = null, string $clientIp = null): array
+    public function getCurrentWeather(string $cityName = null, string $cityCode = null, string $clientIp = null): array
     {
         try {
             // 确定城市代码
@@ -202,13 +228,13 @@ class WeatherCrawler
 
     /**
      * 获取7日天气数据接口
-     * @param string|null $cityCode 城市代码
      * @param string|null $cityName 城市名称
+     * @param string|null $cityCode 城市代码
      * @param string|null $clientIp 可选的客户端IP地址，用于获取真实访客位置
      * @return array
      * @throws \Exception
      */
-    public function get7DayWeatherData(string $cityCode = null, string $cityName = null, string $clientIp = null): array
+    public function get7DayWeather(string $cityName = null, string $cityCode = null, string $clientIp = null): array
     {
         try {
             // 确定城市代码
@@ -226,13 +252,13 @@ class WeatherCrawler
 
     /**
      * 获取逐小时天气数据接口
-     * @param string|null $cityCode 城市代码
      * @param string|null $cityName 城市名称
+     * @param string|null $cityCode 城市代码
      * @param string|null $clientIp 可选的客户端IP地址，用于获取真实访客位置
      * @return array
      * @throws \Exception
      */
-    public function getHourlyWeatherData(string $cityCode = null, string $cityName = null, string $clientIp = null): array
+    public function getHourlyWeather(string $cityName = null, string $cityCode = null, string $clientIp = null): array
     {
         try {
             // 确定城市代码
@@ -248,20 +274,20 @@ class WeatherCrawler
     /**
      * 获取全部数据接口
      * 含当前天气数据详情，15日天气数据及逐小时天气数据
-     * @param string|null $cityCode 城市代码
      * @param string|null $cityName 城市名称
+     * @param string|null $cityCode 城市代码
      * @param string|null $clientIp 可选的客户端IP地址，用于获取真实访客位置
      * @return array
      * @throws \Exception
      */
-    public function getAllWeatherData(string $cityCode = null, string $cityName = null, string $clientIp = null): array
+    public function getAllWeather(string $cityName = null, string $cityCode = null, string $clientIp = null): array
     {
         try {
             // 确定城市代码
             $cityCode = $this->getCityCode($cityCode, $cityName, $clientIp);
             
-            // 获取当前天气数据
-            $currentWeather = $this->getCurrentWeather($cityCode, null, $clientIp);
+            // 获取当前天气数据（直接使用已确定的城市代码）
+            $currentWeather = $this->getCurrentWeather(null, $cityCode);
             
             // 获取17日天气数据（取前15天）
             $allDayData = $this->getMultiDayWeatherData($cityCode);
@@ -375,7 +401,7 @@ class WeatherCrawler
                     'temperature' => $data['temp'] ?? '',
                     'weather' => $data['weather'] ?? '',
                     'windDirection' => $data['WD'] ?? '',
-                    'windPower' => $data['WS'] ?? '',
+                    'windPower' => self::WIND_POWER_CODES[$data['WS']] ?? $data['WS'] ?? '',
                     'humidity' => $data['SD'] ?? '',
                     'time' => $data['time'] ?? date('H:i'),
                     'aqi' => $data['aqi'] ?? ''
@@ -422,22 +448,13 @@ class WeatherCrawler
                     throw new \Exception('未找到多日天气数据');
                 }
                 
-                // 天气状况代码映射
-                $weatherCodes = [
-                    '00' => '晴', '01' => '多云', '02' => '阴', '03' => '小雨',
-                    '04' => '中雨', '05' => '大雨', '06' => '暴雨', '07' => '雷阵雨',
-                    '08' => '阵雨', '09' => '小雪', '10' => '中雪', '11' => '大雪',
-                    '12' => '暴雪', '13' => '雾', '14' => '霾', '15' => '沙尘',
-                    '16' => '扬沙', '17' => '浮尘', '18' => '强沙尘暴', '19' => '雷阵雨伴有冰雹',
-                    '20' => '小雨-中雨', '21' => '中雨-大雨', '22' => '大雨-暴雨', '23' => '暴雨-大暴雨',
-                    '24' => '大暴雨-特大暴雨', '25' => '小雪-中雪', '26' => '中雪-大雪', '27' => '大雪-暴雪'
-                ];
+                // 使用类常量的天气状况代码映射
                 
                 // 处理数据
                 $result = [];
                 foreach ($data as $item) {
-                    $dayWeather = $weatherCodes[$item['fa']] ?? '未知';
-                    $nightWeather = $weatherCodes[$item['fb']] ?? '未知';
+                    $dayWeather = self::WEATHER_CODES[$item['fa']] ?? '未知';
+                    $nightWeather = self::WEATHER_CODES[$item['fb']] ?? '未知';
                     
                     $weather = $dayWeather;
                     if ($dayWeather !== $nightWeather) {
@@ -452,8 +469,8 @@ class WeatherCrawler
                         'tempMin' => $item['fd'] ?? '',
                         'windDay' => $item['fe'] ?? '',
                         'windNight' => $item['ff'] ?? '',
-                        'windPowerDay' => $item['fg'] ?? '',
-                        'windPowerNight' => $item['fh'] ?? '',
+                        'windPowerDay' => self::WIND_POWER_CODES[$item['fg']] ?? $item['fg'] ?? '',
+                        'windPowerNight' => self::WIND_POWER_CODES[$item['fh']] ?? $item['fh'] ?? '',
                         'humidityDay' => $item['fm'] ?? '',
                         'humidityNight' => $item['fn'] ?? ''
                     ];
@@ -499,17 +516,7 @@ class WeatherCrawler
                     throw new \Exception('未找到逐小时天气数据');
                 }
                 
-                // 天气状况代码映射
-                $weatherCodes = [
-                    '00' => '晴', '01' => '多云', '02' => '阴', '03' => '小雨',
-                    '04' => '中雨', '05' => '大雨', '06' => '暴雨', '07' => '雷阵雨',
-                    '08' => '阵雨', '09' => '小雪', '10' => '中雪', '11' => '大雪',
-                    '12' => '暴雪', '13' => '雾', '14' => '霾', '15' => '沙尘',
-                    '16' => '扬沙', '17' => '浮尘', '18' => '强沙尘暴', '19' => '雷阵雨伴有冰雹',
-                    '20' => '小雨-中雨', '21' => '中雨-大雨', '22' => '大雨-暴雨', '23' => '暴雨-大暴雨',
-                    '24' => '大暴雨-特大暴雨', '25' => '小雪-中雪', '26' => '中雪-大雪', '27' => '大雪-暴雪',
-                    '301' => '多云', '302' => '阴'
-                ];
+                // 使用类常量的天气状况代码映射
                 
                 // 处理数据
                 $result = [];
@@ -533,13 +540,13 @@ class WeatherCrawler
                             // 只保留当前时间之后的天气数据
                             if ($forecastTime > $currentTime) {
                                 $result[] = [
-                                    'time' => $displayTime,
-                                    'temperature' => $item['jd'] ?? '',
-                                    'weather' => $weatherCodes[$item['ja']] ?? '未知',
-                                    'windDirection' => $item['jh'] ?? '',
-                                    'windPower' => $item['ji'] ?? '',
-                                    'humidity' => $item['je'] ?? ''
-                                ];
+                                'time' => $displayTime,
+                                'temperature' => $item['jd'] ?? '',
+                                'weather' => self::WEATHER_CODES[$item['ja']] ?? '未知',
+                                'windDirection' => $item['jh'] ?? '',
+                                'windPower' => self::WIND_POWER_CODES[$item['ji']] ?? $item['ji'] ?? '',
+                                'humidity' => $item['je'] ?? ''
+                            ];
                             }
                         }
                     }
