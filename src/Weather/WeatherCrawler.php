@@ -209,8 +209,12 @@ class WeatherCrawler
             case '15day':
                 return $this->get15DayWeather($this->currentCityCode);
             case 'comprehensive':
+                // 获取基础天气数据以获取城市名称和代码
+                $basicData = $this->getBasicWeatherData($this->currentCityCode);
                 // 同时获取detail、7day、hourly、15day的数据
                 return [
+                    'cityCode' => $basicData['cityCode'],
+                    'cityName' => $basicData['cityName'],
                     'detail' => $this->getWeatherDetailData($this->currentCityCode),
                     '7day' => $this->get7DayWeather($this->currentCityCode),
                     'hourly' => $this->getHourlyWeather($this->currentCityCode, $hourlyLimit),
