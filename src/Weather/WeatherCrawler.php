@@ -35,7 +35,8 @@ class WeatherCrawler
         '03' => '3级', '04' => '4级', '05' => '5级', '06' => '6级',
         '07' => '7级', '08' => '8级', '09' => '9级', '10' => '10级'
     ];
-    
+ 
+
     /**
      * 访客数据
      * @var array
@@ -179,27 +180,42 @@ class WeatherCrawler
     
     /**
      * 统一获取天气数据（流畅接口）
-     * @param string $type 获取类型：current(当前天气)、7day(7天预报)、15day(15天预报)、hourly(逐小时预报)、all(全部数据)
+     * @param string $type 获取类型：
+     *   - basic: 当天基础天气数据
+     *   - detail: 当天详细天气数据
+     *   - 7day: 7天预报
+     *   - hourly: 逐小时预报
+     *   - 15day: 15天预报
+     *   - comprehensive: 同时获取detail、7day、hourly、15day的数据
+     * @param int $hourlyLimit 逐小时天气数据的条数限制，仅在type为hourly或comprehensive时有效，默认24条
      * @return array
      * @throws WeatherException
      */
-    public function getWeather(string $type = 'all'): array
+    public function getWeather(string $type = 'comprehensive', int $hourlyLimit = 24): array
     {
         if ($this->currentCityCode === null) {
             throw WeatherException::locationFailed('未设置位置信息');
         }
         
         switch ($type) {
-            case 'current':
-                return $this->getCurrentWeather($this->currentCityCode);
+            case 'basic':
+                return $this->getBasicWeatherData($this->currentCityCode);
+            case 'detail':
+                return $this->getWeatherDetailData($this->currentCityCode);
             case '7day':
                 return $this->get7DayWeather($this->currentCityCode);
+            case 'hourly':
+                return $this->getHourlyWeather($this->currentCityCode, $hourlyLimit);
             case '15day':
                 return $this->get15DayWeather($this->currentCityCode);
-            case 'hourly':
-                return $this->getHourlyWeather($this->currentCityCode);
-            case 'all':
-                return $this->getAllWeather($this->currentCityCode);
+            case 'comprehensive':
+                // 同时获取detail、7day、hourly、15day的数据
+                return [
+                    'detail' => $this->getWeatherDetailData($this->currentCityCode),
+                    '7day' => $this->get7DayWeather($this->currentCityCode),
+                    'hourly' => $this->getHourlyWeather($this->currentCityCode, $hourlyLimit),
+                    '15day' => $this->get15DayWeather($this->currentCityCode)
+                ];
             default:
                 throw WeatherException::invalidParameter('type', $type);
         }
@@ -245,9 +261,6 @@ class WeatherCrawler
         return null;
     }
     
-
-    
-
 
     /**
      * 获取访客数据
@@ -328,6 +341,30 @@ class WeatherCrawler
         }
         
         return $this->visitorData;
+    }
+    /**
+     * 获取aqi值对应的文字描述
+     * @param int $aqi aqi值
+     * @return string 文字描述
+     */
+    public function getAqiDescription(int $aqi): string
+    {
+        if ($aqi === 0) {
+            return '未知';
+        }
+        if ($aqi <= 50) {
+            return '优';
+        } elseif ($aqi <= 100) {
+            return '良';
+        } elseif ($aqi <= 150) {
+            return '轻度污染';
+        } elseif ($aqi <= 200) {
+            return '中度污染';
+        } elseif ($aqi <= 300) {
+            return '重度污染';
+        } else {
+            return '严重污染';
+        }
     }
 
     /**
@@ -703,6 +740,7 @@ class WeatherCrawler
                     'time' => $data['time'] ?? date('H:i'),
                     'date' => $data['date'] ?? date('Y-m-d'),
                     'aqi' => $data['aqi'] ?? '',
+                    'air' => $this->getAqiDescription($data['aqi'] ?? 0),
                     'pm25' => $data['aqi_pm25'] ?? '',
                     'rain' => $data['rain'] ?? '',
                     'rain24h' => $data['rain24h'] ?? '',
@@ -727,7 +765,7 @@ class WeatherCrawler
     }
 
     /**
-     * 获取15日天气数据及逐小时天气数据
+     * 获取15日天气数据
      * 数据源：https://d1.weather.com.cn/weixinfc/101260104.html?_=1767796061347
      * @param string $cityCode 城市代码
      * @return array
@@ -775,6 +813,8 @@ class WeatherCrawler
                         'date' => $item['fi'] ?? '',
                         'day' => $item['fj'] ?? '',
                         'weather' => $weather,
+                        'weatherDay' => $dayWeather,
+                        'weatherNight' => $nightWeather,
                         'tempMax' => $item['fc'] ?? '',
                         'tempMin' => $item['fd'] ?? '',
                         'windDay' => $item['fe'] ?? '',
@@ -852,6 +892,7 @@ class WeatherCrawler
                             // 只保留当前时间之后的天气数据
                             if ($forecastTime > $currentTime) {
                                 $result[] = [
+                                    'dataTime' => $fullTime,    
                                     'time' => $displayTime,
                                     'temperature' => $item['jd'] ?? '',
                                     'weather' => self::WEATHER_CODES[$item['ja']] ?? '未知',
@@ -917,30 +958,126 @@ class WeatherCrawler
             // 解析数据
             $result = [];
             
-            // 获取空气质量数据
-            if (preg_match('/var\s+aqi\s*=\s*(\{[^}]+\})/', $response, $matches)) {
-                $aqiData = json_decode($matches[1], true);
-                if ($aqiData !== null) {
-                    // 返回所有空气质量数据字段
-                    $result['airQuality'] = $aqiData;
+            // 获取空气质量数据 (从 dataSK 变量中获取)
+            if (preg_match('/var\s+dataSK\s*=\s*(\{[^}]+\})/', $response, $matches)) {
+                $dataSK = json_decode($matches[1], true);
+                if ($dataSK !== null) {
+                    // 提取空气质量相关字段
+                    $airQualityData = [
+                        'aqi' => $dataSK['aqi'] ?? '',
+                        'aqi_pm25' => $dataSK['aqi_pm25'] ?? '',
+                        'air' => $this->getAqiDescription($dataSK['aqi'] ?? 0),
+                        'temperature' => $dataSK['temp'] ?? '',
+                        'humidity' => $dataSK['sd'] ?? '',
+                        'weather' => $dataSK['weather'] ?? '',
+                        'windDirection' => $dataSK['WD'] ?? '',
+                        'windSpeed' => $dataSK['WS'] ?? '',
+                        'windSpeedExplicit' => $dataSK['wse'] ?? '',
+                        'visibility' => $dataSK['njd'] ?? '',
+                        'pressure' => $dataSK['qy'] ?? '',
+                        'rain' => $dataSK['rain'] ?? '',
+                        'rain24h' => $dataSK['rain24h'] ?? '',
+                        'time' => $dataSK['time'] ?? '',
+                        'date' => $dataSK['date'] ?? ''
+                    ];
+                    $result['airQuality'] = $airQualityData;
                 }
             }
             
-            // 获取天气指数数据
-            if (preg_match('/var\s+index\s*=\s*(\[\{[^\]]+\}\])/', $response, $matches)) {
-                $indexData = json_decode($matches[1], true);
-                if ($indexData !== null) {
-                    // 返回所有天气指数数据字段
+            // 获取天气指数数据 (从 dataZS 变量中获取)
+            // 使用更健壮的正则表达式匹配完整的dataZS JSON结构
+            if (preg_match('/var\s+dataZS\s*=\s*(\{.*\});/', $response, $matches)) {
+                // 修复JSON格式 - 移除可能存在的无效字符
+                $jsonStr = $matches[1];
+                
+                // 尝试解析JSON
+                $dataZS = json_decode($jsonStr, true);
+                if ($dataZS === null) {
+                    // 如果解析失败，尝试移除尾部多余内容
+                    $jsonStr = preg_replace('/\},\s*\}/', '}}', $jsonStr);
+                    $dataZS = json_decode($jsonStr, true);
+                }
+                
+                if ($dataZS !== null && isset($dataZS['zs'])) {
+                    // 提取所有天气指数 - 实际结构是直接的属性名（如 ct_name, ct_hint）
                     $weatherIndex = [];
-                    foreach ($indexData as $item) {
-                        $weatherIndex[] = $item;
+                    $zsData = $dataZS['zs'];
+                    
+                    // 定义所有可能的指数前缀和对应的名称
+                    $indexPrefixes = [
+                        'ct' => '穿衣指数',
+                        'lk' => '路况指数',
+                        'dy' => '钓鱼指数',
+                        'cl' => '晨练指数',
+                        'nl' => '夜生活指数',
+                        'uv' => '紫外线强度指数',
+                        'gm' => '感冒指数',
+                        'gj' => '逛街指数',
+                        'pl' => '空气污染扩散条件指数',
+                        'tr' => '旅游指数',
+                        'co' => '舒适度指数',
+                        'pj' => '啤酒指数',
+                        'hc' => '划船指数',
+                        'gl' => '太阳镜指数',
+                        'wc' => '风寒指数',
+                        'pk' => '放风筝指数',
+                        'ac' => '空调开启指数',
+                        'ls' => '晾晒指数',
+                        'xc' => '洗车指数',
+                        'xq' => '心情指数',
+                        'zs' => '中暑指数',
+                        'jt' => '交通指数',
+                        'yh' => '约会指数',
+                        'yd' => '运动指数',
+                        'ag' => '过敏指数',
+                        'mf' => '美发指数',
+                        'ys' => '雨伞指数',
+                        'fs' => '防晒指数',
+                        'pp' => '化妆指数',
+                        'gz' => '干燥指数'
+                    ];
+                    
+                    // 遍历所有指数前缀，提取对应的数据
+                    foreach ($indexPrefixes as $prefix => $fullName) {
+                        // 检查是否存在该指数的任何属性
+                        if (isset($zsData[$prefix . '_name']) || isset($zsData[$prefix . '_hint']) || isset($zsData[$prefix . '_des_s'])) {
+                            $weatherIndex[] = [
+                                'name' => $zsData[$prefix . '_name'] ?? $fullName,
+                                'shortName' => $prefix,
+                                'level' => $zsData[$prefix . '_hint'] ?? '',
+                                'description' => $zsData[$prefix . '_des_s'] ?? '',
+                                'fullDescription' => $zsData[$prefix . '_des'] ?? ''
+                            ];
+                        }
                     }
-                    $result['weatherIndex'] = $weatherIndex;
+                    
+                    // 只在有指数数据时添加到结果
+                    if (!empty($weatherIndex)) {
+                        $result['weatherIndex'] = $weatherIndex;
+                    }
+                }
+            }
+            
+            // 获取城市基础信息 (从 cityDZ 变量中获取)
+            if (preg_match('/var\s+cityDZ\s*=\s*(\{[^}]+\})/', $response, $matches)) {
+                $cityDZ = json_decode($matches[1], true);
+                if ($cityDZ !== null && isset($cityDZ['weatherinfo'])) {
+                    $result['cityInfo'] = $cityDZ['weatherinfo'];
+                }
+            }
+            
+            // 获取预警信息 (从 alarmDZ 变量中获取)
+            if (preg_match('/var\s+alarmDZ\s*=\s*(\{[^}]+\})/', $response, $matches)) {
+                $alarmDZ = json_decode($matches[1], true);
+                if ($alarmDZ !== null) {
+                    $result['alarmInfo'] = $alarmDZ;
                 }
             }
             
             return $result;
         } catch (\Exception $e) {
+            // 记录错误但不中断程序
+            error_log('获取天气详情数据失败: ' . $e->getMessage());
             // 天气详情数据不是必须的，可以返回空数组
             return [];
         }

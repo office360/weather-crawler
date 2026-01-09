@@ -10,11 +10,13 @@
   - 通过城市名称获取城市ID
   - 通过经纬度坐标获取城市ID
   - 通过IP地址获取城市ID
-- **提供四种API接口**：
-  - 当前天气数据
+- **提供六种天气数据获取方式**：
+  - 当天基础天气数据
+  - 当天详细天气数据
   - 7日天气预报
-  - 逐小时天气预报
-  - 综合天气数据（包含上述所有数据）
+  - 逐小时天气预报（默认24小时，可自定义条数）
+  - 15日天气预报
+  - 综合天气数据（同时获取详细、7天、逐小时和15天数据）
 - **支持PS-4自动加载**：符合现代PHP开发标准
 - **模拟移动设备请求**：避免网站反爬限制
 - **完善的错误处理机制**：确保应用稳定运行
@@ -73,10 +75,10 @@ use Weather\WeatherCrawler;
 $weatherCrawler = WeatherCrawler::create();
 
 try {
-    // 通过城市名称获取当前天气
-    $currentWeather = $weatherCrawler->forCity('北京')
-                                    ->getWeather('current');
-    print_r($currentWeather);
+    // 通过城市名称获取当前基础天气
+    $basicWeather = $weatherCrawler->forCity('北京')
+                                  ->getWeather('basic');
+    print_r($basicWeather);
 } catch (Exception $e) {
     echo '错误: ' . $e->getMessage();
 }
@@ -120,10 +122,10 @@ use Weather\WeatherCrawler;
 $weatherCrawler = WeatherCrawler::create();
 
 try {
-    // 使用流式接口通过经纬度获取当前天气（北京的经纬度）
-    $currentWeather = $weatherCrawler->forCoordinates(39.9042, 116.4074)
-                                     ->getWeather('current');
-    print_r($currentWeather);
+    // 使用流式接口通过经纬度获取当前基础天气（北京的经纬度）
+    $basicWeather = $weatherCrawler->forCoordinates(39.9042, 116.4074)
+                                   ->getWeather('basic');
+    print_r($basicWeather);
 } catch (Exception $e) {
     echo '错误: ' . $e->getMessage();
 }
@@ -142,10 +144,10 @@ use Weather\WeatherCrawler;
 $weatherCrawler = WeatherCrawler::create();
 
 try {
-    // 使用流式接口通过IP地址获取当前天气（北京的IP地址）
-    $currentWeather = $weatherCrawler->forIp('114.247.50.2')
-                                     ->getWeather('current');
-    print_r($currentWeather);
+    // 使用流式接口通过IP地址获取当前基础天气（北京的IP地址）
+    $basicWeather = $weatherCrawler->forIp('114.247.50.2')
+                                   ->getWeather('basic');
+    print_r($basicWeather);
 } catch (Exception $e) {
     echo '错误: ' . $e->getMessage();
 }
@@ -167,13 +169,13 @@ use Weather\WeatherCrawler;
 // 创建实例
 $weatherCrawler = WeatherCrawler::create();
 
-// 根据访客所在城市获取当前天气数据
+// 根据访客所在城市获取当前基础天气数据
 // forCurrentLocation() 方法会自动获取访客IP并定位城市
 
 try {
-    $currentWeather = $weatherCrawler->forCurrentLocation()
-                                     ->getWeather('current');
-    print_r($currentWeather);
+    $basicWeather = $weatherCrawler->forCurrentLocation()
+                                   ->getWeather('basic');
+    print_r($basicWeather);
 } catch (Exception $e) {
     echo '错误: ' . $e->getMessage();
 }
@@ -244,7 +246,7 @@ $weatherCrawler = WeatherCrawler::create();
 try {
     // 使用流式接口通过指定IP获取当前天气（模拟北京IP）
     $currentWeather = $weatherCrawler->forIp('114.247.50.2')
-                                     ->getWeather('current');
+                                     ->getWeather('basic');
     print_r($currentWeather);
 } catch (Exception $e) {
     echo '错误: ' . $e->getMessage();
@@ -267,9 +269,9 @@ $weatherCrawler = WeatherCrawler::create();
 
 try {
     // 使用流式接口获取综合天气数据（广州）
-    $allWeather = $weatherCrawler->forCity('广州')
-                                ->getWeather('all');
-    print_r($allWeather);
+    $comprehensiveWeather = $weatherCrawler->forCity('广州')
+                                         ->getWeather('comprehensive');
+    print_r($comprehensiveWeather);
 } catch (Exception $e) {
     echo '错误: ' . $e->getMessage();
 }
@@ -342,17 +344,19 @@ $weatherCrawler = WeatherCrawler::create();
 返回值：
 - `WeatherCrawler`：返回当前实例，用于方法链式调用
 
-##### getWeather(string $type = 'all')
+##### getWeather(string $type = 'comprehensive', int $hourlyLimit = 24)
 
 获取指定类型的天气数据。
 
 参数：
-- `$type`：天气数据类型（可选，默认为'all'）
-  - 'current'：当前天气数据
+- `$type`：天气数据类型（可选，默认为'comprehensive'）
+  - 'basic'：当天基础天气数据
+  - 'detail'：当天详细天气数据
   - '7day'：7日天气预报
-  - '15day'：15日天气预报
   - 'hourly'：逐小时天气预报
-  - 'all'：综合天气数据（包含上述所有数据）
+  - '15day'：15日天气预报
+  - 'comprehensive'：综合天气数据（同时获取详细、7天、逐小时和15天数据）
+- `$hourlyLimit`：逐小时天气预报的返回条数限制（仅当$type为'hourly'或'comprehensive'时有效，默认24条）
 
 返回值：
 - `array`：天气数据数组，格式根据$type参数而定
@@ -412,7 +416,7 @@ $weatherCrawler = WeatherCrawler::create();
 
 ##### getCurrentWeather(string $cityCode)
 
-获取当前天气数据。
+获取当前天气数据（包含基础和详细数据）。
 
 参数：
 - `$cityCode`：城市代码（必需）
@@ -478,12 +482,40 @@ $weatherCrawler = WeatherCrawler::create();
 ]
 ```
 
-##### getHourlyWeather(string $cityCode)
+##### get15DayWeather(string $cityCode)
+
+获取15日天气预报。
+
+参数：
+- `$cityCode`：城市代码（必需）
+
+返回值：
+```php
+[
+    [
+        'date' => string, // 日期
+        'day' => string, // 星期
+        'weather' => string, // 天气状况
+        'tempMax' => string, // 最高温度
+        'tempMin' => string, // 最低温度
+        'windDay' => string, // 白天风向
+        'windNight' => string, // 夜间风向
+        'windPowerDay' => string, // 白天风力
+        'windPowerNight' => string, // 夜间风力
+        'humidityDay' => string, // 白天湿度
+        'humidityNight' => string // 夜间湿度
+    ],
+    // ... 共15天
+]
+```
+
+##### getHourlyWeather(string $cityCode, int $limit = 24)
 
 获取逐小时天气预报。
 
 参数：
 - `$cityCode`：城市代码（必需）
+- `$limit`：返回条目数量限制（可选，默认24条）
 
 返回值：
 ```php
@@ -496,7 +528,7 @@ $weatherCrawler = WeatherCrawler::create();
         'windPower' => string, // 风力
         'humidity' => string // 湿度
     ],
-    // ... 共24小时（实际返回约109小时数据）
+    // ... 根据limit参数返回指定条数
 ]
 ```
 
@@ -515,6 +547,13 @@ $weatherCrawler = WeatherCrawler::create();
     'hourlyWeather' => array // 逐小时天气预报数据，同getHourlyWeather返回值格式
 ]
 ```
+
+##### getCityCodeMap()
+
+获取城市代码映射表。
+
+返回值：
+- `array`：城市代码映射表，格式为 `['城市名称' => '城市代码']`
 
 ## 注意事项
 

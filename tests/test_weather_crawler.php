@@ -98,46 +98,58 @@ runTest('城市名称标准化处理 - 上海市区', function() use ($weatherCr
     return $cityCode === '101020100';
 });
 
-// 4. 测试流式接口 - forCity
-runTest('流式接口 forCity - 北京当前天气', function() use ($weatherCrawler) {
-    $weather = $weatherCrawler->forCity('北京')->getWeather('current');
-    return isset($weather['cityCode']) && $weather['cityCode'] === '101010100';
+// 4. 测试流式接口 - forCity (basic)
+runTest('流式接口 forCity - 北京基础天气数据', function() use ($weatherCrawler) {
+    $weather = $weatherCrawler->forCity('北京')->getWeather('basic');
+    return isset($weather['cityCode']) && $weather['cityCode'] === '101010100' && isset($weather['temperature']);
 });
 
-// 5. 测试流式接口 - forCoordinates
-runTest('流式接口 forCoordinates - 北京当前天气', function() use ($weatherCrawler) {
-    $weather = $weatherCrawler->forCoordinates(39.9042, 116.4074)->getWeather('current');
-    return isset($weather['cityCode']);
+// 5. 测试流式接口 - forCity (detail)
+runTest('流式接口 forCity - 北京详细天气数据', function() use ($weatherCrawler) {
+    $weather = $weatherCrawler->forCity('北京')->getWeather('detail');
+    return isset($weather['airQuality']) || isset($weather['weatherIndex']);
 });
 
-// 6. 测试get7DayWeather方法
-runTest('get7DayWeather方法 - 北京', function() use ($weatherCrawler) {
+// 6. 测试流式接口 - forCity (7day)
+runTest('流式接口 forCity - 北京7天天气数据', function() use ($weatherCrawler) {
     $weather = $weatherCrawler->forCity('北京')->getWeather('7day');
     return is_array($weather) && count($weather) >= 7;
 });
 
-// 7. 测试get15DayWeather方法
-runTest('get15DayWeather方法 - 北京', function() use ($weatherCrawler) {
+// 7. 测试流式接口 - forCity (15day)
+runTest('流式接口 forCity - 北京15天天气数据', function() use ($weatherCrawler) {
     $weather = $weatherCrawler->forCity('北京')->getWeather('15day');
     return is_array($weather) && count($weather) >= 15;
 });
 
-// 8. 测试getHourlyWeather方法
-runTest('getHourlyWeather方法 - 北京', function() use ($weatherCrawler) {
+// 8. 测试流式接口 - forCity (hourly)
+runTest('流式接口 forCity - 北京逐小时天气数据', function() use ($weatherCrawler) {
     $weather = $weatherCrawler->forCity('北京')->getWeather('hourly');
     return is_array($weather) && count($weather) > 0;
 });
 
-// 9. 测试getAllWeather方法
-runTest('getAllWeather方法 - 北京', function() use ($weatherCrawler) {
-    $weather = $weatherCrawler->forCity('北京')->getWeather('all');
-    return isset($weather['currentWeather']) && isset($weather['fifteenDayWeather']) && isset($weather['hourlyWeather']);
+// 9. 测试流式接口 - forCity (comprehensive)
+runTest('流式接口 forCity - 北京综合天气数据', function() use ($weatherCrawler) {
+    $weather = $weatherCrawler->forCity('北京')->getWeather('comprehensive');
+    return isset($weather['detail']) && isset($weather['7day']) && isset($weather['hourly']) && isset($weather['15day']);
 });
 
-// 10. 测试forCityCode方法
+// 10. 测试流式接口 - forCoordinates
+runTest('流式接口 forCoordinates - 北京当前天气', function() use ($weatherCrawler) {
+    $weather = $weatherCrawler->forCoordinates(39.9042, 116.4074)->getWeather('basic');
+    return isset($weather['cityCode']);
+});
+
+// 11. 测试forCityCode方法
 runTest('forCityCode方法 - 北京', function() use ($weatherCrawler) {
-    $weather = $weatherCrawler->forCityCode('101010100')->getWeather('current');
+    $weather = $weatherCrawler->forCityCode('101010100')->getWeather('basic');
     return isset($weather['cityCode']) && $weather['cityCode'] === '101010100';
+});
+
+// 12. 测试自定义小时天气条数
+runTest('自定义小时天气条数 - 北京12条', function() use ($weatherCrawler) {
+    $weather = $weatherCrawler->forCity('北京')->getWeather('hourly', 12);
+    return is_array($weather) && count($weather) <= 12;
 });
 
 // 11. 测试getVisitorData方法

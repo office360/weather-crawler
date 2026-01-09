@@ -9,6 +9,7 @@ composer.phar
 *.log
 
 # Editor directories and files
+.trae/
 .idea/
 .vscode/
 *.swp
